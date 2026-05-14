@@ -22,7 +22,7 @@ title('绝对幅度响应');
 subplot(2,1,2);
 plot(wN, magRel_dB, 'LineWidth', 1.2);
 xlim([0 1]);
-ylim([-100 0]);
+ylim([-50 0]);
 xlabel('\omega/\pi');
 ylabel('相对幅度(dB)');
 grid on;
