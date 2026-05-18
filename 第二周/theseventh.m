@@ -44,16 +44,9 @@ xlabel('\omega/\pi');
 ylabel('群延时');
 grid on;
 title('群延时');
-%滤波器类型
-if all(p > 0) && all(p < 1)
-    filterType = '低通滤波器';
-elseif all(p < 0) && all(p > -1)
-    filterType = '高通滤波器';
-elseif all(p > 0) && all(p > 1)
-    filterType = '带通滤波器';
-elseif all(p < 0) && all(p < -1)
-    filterType = '带阻滤波器';
+%判断滤波器类型
+if all(a(2:end) == 0)
+    disp('该滤波器为FIR滤波器');
 else
-    filterType = '未知类型滤波器';
+    disp('该滤波器为IIR滤波器');
 end
-disp(['滤波器类型：', filterType]);
