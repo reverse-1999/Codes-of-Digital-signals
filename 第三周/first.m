@@ -50,6 +50,9 @@ ylabel('∠X(k)');
 xn_IDFS = 1/N/3*XN*wk.^(k'*n);
 figure;
 stem(n,real(xn_IDFS));
+title('三个周期信号的IDFS');
+xlabel('n');
+ylabel('x(n)');
 
 
 
