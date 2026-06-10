@@ -12,9 +12,15 @@ wp2 = 2*fp2/Fs;
 %带阻滤波器设计
 delta_w = min(ws1-wp1, wp2-ws2);
 N = ceil(6.2/delta_w);
-b = fir1(N+1,[ws1 ws2],'stop');
+N = N+1;
+b = fir1(N,[ws1 ws2],'stop',hanning(N+1));
 %频率响应
 [H,w] = freqz(b,1,1024);
+figure;%脉冲响应
+stem(0:N,b,'filled');
+xlabel('n');
+ylabel('h(n)');
+title('带阻滤波器的脉冲响应');
 figure;
 subplot(2,1,1);
 plot(w/pi,20*log10(abs(H)),'Color','b');
