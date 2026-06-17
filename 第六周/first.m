@@ -77,7 +77,41 @@ fp2 = 2000;
 Ap2 = 1;
 As2 = 20;
 %IIR
+wp2 = 2*pi*fp2;
+ws2 = 2*pi*fs2;
+ksp2 = wp2/ws2;
+lamdasp2 = sqrt((10^(As2/10)-1)/(10^(Ap2/10)-1));
+NIIR2 = ceil(abs(log10(lamdasp2)/log10(ksp2)));
+wc2 = wp2/(10^(Ap2/10)-1)^(1/(2*NIIR2));
+[A2,B2] = butter(NIIR2,wc2/(Fs/2),'high');
 %FIR
+NFIR2 = ceil((As2-8)/(2.285*(fp2-fs2)/Fs));
+b2 = fir1(NFIR2,fs2/(Fs/2),'high',hanning(NFIR2+1));
+%时域
+y_highpass_IIR = filter(A2,B2,y);
+y_highpass_FIR = filter(b2,1,y);
+figure;
+subplot(2,1,1);
+plot(t,y,'Color','b');
+hold on;
+plot(t,y_highpass_IIR,'Color','r');
+plot(t,y_highpass_FIR,'Color','g');
+xlabel('时间/s');
+ylabel('幅值');
+legend('原始信号','IIR高通滤波后','FIR高通滤波后');
+title('高通滤波器的时域响应');
+%频域
+Y_highpass_IIR = fft(y_highpass_IIR);
+Y_highpass_FIR = fft(y_highpass_FIR);
+subplot(2,1,2);
+plot((0:N-1)*Fs/N,abs(Y),'Color','b');
+hold on;
+plot((0:N-1)*Fs/N,abs(Y_highpass_IIR),'Color','r');
+plot((0:N-1)*Fs/N,abs(Y_highpass_FIR),'Color','g');
+xlabel('频率/Hz');
+ylabel('幅值');
+legend('原始信号','IIR高通滤波后','FIR高通滤波后');
+title('高通滤波器的频域响应');
 %带通设计
 fpl=1200;
 fpu=3000;
@@ -85,170 +119,40 @@ fsl=1000;
 fsu=3200;
 As3=15;
 Ap3=1;
-%IIR
+%IIR  —— 用 buttord 直接设计（双过渡带无法套用低通公式）
+Wp = [fpl fpu]/(Fs/2)*2*pi; 
+Ws = [fsl fsu]/(Fs/2)*2*pi;
+[NIIR3, Wn] = buttord(Wp*Fs, Ws*Fs, Ap3, As3,'s');
+[B_s,A_s] = butter(NIIR3, Wn, 's');
+[B3, A3] = impinvar(B_s, A_s, Fs);
 %FIR
-
-%变声，男声的基频一般在80-400Hz，女声在150-1100Hz，童声在250-1300Hz
-% 使用相位声码器(Phase Vocoder)实现变调不变速
-
-y_voice = double(y(:));
-origLen = length(y_voice);
-
-% 选择变声类型
-choice = menu('选择变声类型','保留原音','提高音高(女声/童声)','降低音高(男声)','自定义因子');
-if choice == 0 || choice == 1
-    y_voice_out = y_voice;
-    p = 1;
-else
-    switch choice
-        case 2 % 提高音高
-            sub = menu('提高程度','轻微(x1.3)','中等(x1.8)','明显(x2.5)');
-            if sub==1,      p = 1.3;
-            elseif sub==2,  p = 1.8;
-            elseif sub==3,  p = 2.5;
-            else,           p = 1.8;
-            end
-        case 3 % 降低音高
-            sub = menu('降低程度','轻微(x0.75)','中等(x0.55)','明显(x0.35)');
-            if sub==1,      p = 0.75;
-            elseif sub==2,  p = 0.55;
-            elseif sub==3,  p = 0.35;
-            else,           p = 0.55;
-            end
-        case 4 % 自定义
-            ansdlg = inputdlg({'变调因子 (>1提高, <1降低)：'},'自定义',1,{'1.5'});
-            if isempty(ansdlg), p = 1; else, p = str2double(ansdlg{1}); end
-            if isnan(p) || p<=0, p = 1; end
-        otherwise
-            p = 1;
-    end
-
-    if abs(p - 1) < 1e-6
-        y_voice_out = y_voice;
-    else
-        % 时域OLA变调
-        y_voice_out = lpc_pitch_shift(y_voice, p, Fs);
-    end
-end
-
-% 处理可能出现的NaN
-if any(isnan(y_voice_out)) || isempty(y_voice_out)
-    warning('变声处理异常，回退到原始信号。');
-    y_voice_out = y_voice;
-end
-
-% 去直流并归一化
-y_voice_out = y_voice_out - mean(y_voice_out);
-y_voice_out = y_voice_out / (max(abs(y_voice_out)) + eps) * 0.9;
-
-% 播放变声结果
-fprintf('变调因子: %.2f, 原始长度: %d, 输出长度: %d\n', p, origLen, length(y_voice_out));
-sound(y_voice_out, Fs);
-pause(length(y_voice_out)/Fs + 0.5);
-
-% 绘图对比
+NFIR3 = ceil((As3-8)/(2.285 * min(fpl-fsl, fsu-fpu)/Fs));  % 取最小过渡带
+b3 = fir1(NFIR3, [fsl fsu]/(Fs/2), hanning(NFIR3+1));
+%时域
+y_bandpass_IIR = filter(B3,A3,y);
+y_bandpass_FIR = filter(b3,1,y);
 figure;
 subplot(2,1,1);
-plot(t, y_voice, 'b'); hold on;
-plot(t, y_voice_out, 'r');
-legend('原始信号','变声后');
-title(sprintf('变声时域对比 (因子=%.2f)', p));
-xlabel('时间/s'); ylabel('幅值');
-
-% 频谱对比
-Nfft = origLen;
-Y1_voice = fft(y_voice, Nfft);
-Y2_voice = fft(y_voice_out, Nfft);
-f_voice = (0:Nfft-1)*Fs/Nfft;
+plot(t,y,'Color','b');
+hold on;
+plot(t,y_bandpass_IIR,'Color','r');
+plot(t,y_bandpass_FIR,'Color','g');
+xlabel('时间/s');
+ylabel('幅值');
+legend('原始信号','IIR带通滤波后','FIR带通滤波后');
+title('带通滤波器的时域响应');
+%频域
+Y_bandpass_IIR = fft(y_bandpass_IIR);
+Y_bandpass_FIR = fft(y_bandpass_FIR);
 subplot(2,1,2);
-plot(f_voice(1:floor(Nfft/2)), abs(Y1_voice(1:floor(Nfft/2))), 'b'); hold on;
-plot(f_voice(1:floor(Nfft/2)), abs(Y2_voice(1:floor(Nfft/2))), 'r');
-legend('原始频谱','变声后频谱');
-xlabel('频率/Hz'); ylabel('幅值');
-title(sprintf('变声频域对比 (因子=%.2f)', p));
-
-% 保存选项
-saveChoice = questdlg('是否保存变声后的音频？','保存','是','否','否');
-if strcmp(saveChoice,'是')
-    [outFile,outPath] = uiputfile('*.wav','保存为');
-    if outFile
-        audiowrite(fullfile(outPath,outFile), y_voice_out, Fs);
-        msgbox('保存完成');
-    end
-end
-
-
-% ========== LPC变调函数 ==========
-function y = lpc_pitch_shift(x, factor, Fs)
-    % 基于LPC的变声：分离声源与声道，只改声源音高
-    % x: 输入信号 (列向量)
-    % factor: 变调因子 (>1升高, <1降低)
-    % Fs: 采样率
-    
-    % LPC阶数：语音通常 Fs/1000 + 2~4
-    p = round(Fs / 1000) + 2;
-    
-    % 帧参数
-    frameLen = round(Fs * 0.025);        % 25ms 帧长
-    hopAnalysis = round(frameLen / 2);   % 分析跳距（50%重叠）
-    hopSynthesis = round(hopAnalysis / factor);  % 合成跳距
-    
-    win = hann(frameLen, 'periodic');
-    
-    nFrames = floor((length(x) - frameLen) / hopAnalysis) + 1;
-    outLen = (nFrames - 1) * hopSynthesis + frameLen;
-    
-    y = zeros(outLen, 1);
-    wsum = zeros(outLen, 1);
-    
-    for i = 1:nFrames
-        idx = (i-1)*hopAnalysis + (1:frameLen);
-        frame = x(idx) .* win;
-        
-        % LPC 分析：获得声道滤波器系数
-        [a, ~] = lpc(frame, p);
-        
-        % 逆滤波得到残差（声门激励）
-        residual = filter(a, 1, frame);
-        
-        % 对残差做变速变调（纯音高变换）
-        [Pr, Qr] = rat(1/factor, 1e-4);
-        Pr = max(Pr, 1); Qr = max(Qr, 1);
-        res_shifted = resample(residual, Pr, Qr);
-        
-        % 通过原声道滤波器合成（保留共振峰特征）
-        frame_out = filter(1, a, res_shifted);
-        frame_out = frame_out .* hann(length(frame_out), 'periodic');
-        
-        % 重叠相加（用调整后的合成跳距）
-        out_start = (i-1) * hopSynthesis + 1;
-        out_end = out_start + length(frame_out) - 1;
-        if out_end <= outLen
-            y(out_start:out_end) = y(out_start:out_end) + frame_out;
-            wsum(out_start:out_end) = wsum(out_start:out_end) + hann(length(frame_out), 'periodic');
-        end
-    end
-    
-    % 归一化
-    y = y ./ (wsum + eps);
-    y(isnan(y)) = 0;
-    
-    % 重采样恢复原始长度
-    [P, Q] = rat(length(x) / length(y), 1e-4);
-    P = max(P, 1); Q = max(Q, 1);
-    y = resample(y, P, Q);
-    
-    if length(y) > length(x)
-        y = y(1:length(x));
-    elseif length(y) < length(x)
-        y(length(x)) = 0;
-    end
-    
-    y = y / (max(abs(y)) + eps) * 0.9;
-end
-
-
-
+plot((0:N-1)*Fs/N,abs(Y),'Color','b');
+hold on;
+plot((0:N-1)*Fs/N,abs(Y_bandpass_IIR),'Color','r');
+plot((0:N-1)*Fs/N,abs(Y_bandpass_FIR),'Color','g');
+xlabel('频率/Hz');
+ylabel('幅值');
+legend('原始信号','IIR带通滤波后','FIR带通滤波后');
+title('带通滤波器的频域响应');
 
 
 
