@@ -200,7 +200,11 @@ for PRN=1:32   %%%不同卫星搜索
        %%%%题目4.4 搜索最大峰，记录最大峰位置。用max函数，可以给出最大值和最大值的下标。
         [peakSize, peakIndex] = max(temp);
        %%%%题目4.5 搜索次高峰，可以先将最大峰主瓣范围（±38）全部置零，然后在搜索出最高峰。
-        temp(peakIndex-38:peakIndex+38) = 0; %%%将最大峰主瓣范围（±38）全部置零
+        for i = -38:38
+            if (peakIndex + i) > 0 && (peakIndex + i) <= length(temp)
+                temp(peakIndex + i) = 0; % 将最大峰主瓣范围内的值置零
+            end
+        end
         secondPeakSize = max(temp); %%%搜索次高峰
         
         % If the result is above threshold, then there is a signal ...
@@ -216,7 +220,7 @@ for PRN=1:32   %%%不同卫星搜索
             end
             fprintf('第%02d个频带捕获到信号 ', frqBinIndex);
             figure;
-            plot(temp)   %%%画出检测到信号的结果
+            plot(abs(correlationTimeDom));   %%%画出检测到信号的结果
             
         else
             %--- No signal with this PRN --------------------------------------
