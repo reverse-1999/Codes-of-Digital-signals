@@ -1,6 +1,6 @@
 clc; clear; close all;
 
-%% ===================== 1. 读取音频文件 =====================
+
 [filename, pathname] = uigetfile('*.wma', '请选择音频文件');
 if isequal(filename, 0)
     disp('用户取消选择');
@@ -24,28 +24,24 @@ t = (0:N-1) / fs;            % 时间轴
 fprintf('采样频率: %d Hz\n', fs);
 fprintf('采样点数: %d\n', N);
 
-%% ===================== 2. FFT 频谱分析 =====================
+
 X = fft(audio);              % 快速傅里叶变换
 f_axis = (0:N-1) * (fs/N);   % 频率轴
 mag_X = abs(X);              % 幅度谱
 half = floor(N/2);           % 单边谱截断点
 
-figure('Name', '原始语音信号分析', 'Position', [100 100 800 600]);
+figure;
 subplot(2,1,1);
 plot(t, audio, 'b');
 title('原始语音信号时域波形');
 xlabel('时间 (s)'); ylabel('幅度');
-xlim([0 0.1]);               % 显示前0.1s便于观察
+xlim([0 0.1]);              
 
 subplot(2,1,2);
 plot(f_axis(1:half), mag_X(1:half), 'b');
 title('原始语音信号幅频特性');
 xlabel('频率'); ylabel('幅度');
 xlim([0 5000]);
-
-%% ===================== 3. 数字滤波器设计 =====================
-% 每种滤波器：1个figure画时域+频域对比（蓝=原始，绿=FIR，红=IIR）
-%           另1个figure画滤波器频率响应
 
 % -------------------- (1) 低通滤波器 --------------------
 fp_lp = 500;  fst_lp = 800;  Ap_lp = 1;  As_lp = 20;
@@ -71,7 +67,7 @@ Y_fir_lp = abs(fft(y_fir_lp));
 Y_iir_lp = abs(fft(y_iir_lp));
 
 % 低通 — 时域+频域对比（figure 1）
-figure('Name', '低通滤波器滤波效果', 'Position', [100 100 800 600]);
+figure;
 subplot(2,1,1);
 plot(t, audio, 'b'); hold on;
 plot(t, y_fir_lp, 'g');
@@ -89,7 +85,7 @@ xlabel('频率'); ylabel('幅度');
 legend('原始信号', 'FIR滤波', 'IIR滤波'); xlim([0 2000]);
 
 % 低通 — 滤波器频率响应（figure 2）
-figure('Name', '低通滤波器频率响应', 'Position', [100 100 800 600]);
+figure;
 [H_iir_lp, w_lp] = freqz(b_iir_lp, a_iir_lp, 1024, fs);
 [H_fir_lp, ~]    = freqz(b_fir_lp, 1, 1024, fs);
 subplot(2,1,1);
@@ -128,7 +124,7 @@ Y_fir_hp = abs(fft(y_fir_hp));
 Y_iir_hp = abs(fft(y_iir_hp));
 
 % 高通 — 时域+频域对比
-figure('Name', '高通滤波器滤波效果', 'Position', [100 100 800 600]);
+figure;
 subplot(2,1,1);
 plot(t, audio, 'b'); hold on;
 plot(t, y_fir_hp, 'g');
@@ -145,7 +141,7 @@ xlabel('频率'); ylabel('幅度');
 legend('原始信号', 'FIR滤波', 'IIR滤波'); xlim([0 4000]);
 
 % 高通 — 滤波器频率响应
-figure('Name', '高通滤波器频率响应', 'Position', [100 100 800 600]);
+figure;
 [H_iir_hp, w_hp] = freqz(b_iir_hp, a_iir_hp, 1024, fs);
 [H_fir_hp, ~]    = freqz(b_fir_hp, 1, 1024, fs);
 subplot(2,1,1);
@@ -183,7 +179,7 @@ Y_fir_bp = abs(fft(y_fir_bp));
 Y_iir_bp = abs(fft(y_iir_bp));
 
 % 带通 — 时域+频域对比
-figure('Name', '带通滤波器滤波效果', 'Position', [100 100 800 600]);
+figure;
 subplot(2,1,1);
 plot(t, audio, 'b'); hold on;
 plot(t, y_fir_bp, 'g');
@@ -200,7 +196,7 @@ xlabel('频率'); ylabel('幅度');
 legend('原始信号', 'FIR滤波', 'IIR滤波'); xlim([0 4000]);
 
 % 带通 — 滤波器频率响应
-figure('Name', '带通滤波器频率响应', 'Position', [100 100 800 600]);
+figure;
 [H_iir_bp, w_bp] = freqz(b_iir_bp, a_iir_bp, 1024, fs);
 [H_fir_bp, ~]    = freqz(b_fir_bp, 1, 1024, fs);
 subplot(2,1,1);
@@ -212,7 +208,7 @@ plot(w_bp, 20*log10(abs(H_fir_bp)), 'g');
 title('FIR Kaiser带通滤波器频率响应');
 xlabel('频率'); ylabel('幅度'); ylim([-80 5]); grid on;
 
-%% ===================== 4. 变声处理（imresize方案） =====================
+%变声处理
 disp('===== 变声处理 =====');
 disp('提示：男声基频 80-400Hz，女声 150-1100Hz，童声 250-1300Hz');
 disp('变声方法：STFT + imresize时间轴缩放 + ISTFT + resample恢复时长');
@@ -261,7 +257,7 @@ audiowrite('child_voice.wav',  child_voice,  fs);
 fprintf('\n已保存:\n  male_voice.wav\n  female_voice.wav\n  child_voice.wav\n');
 
 % ===== 绘图（时域+频谱+语谱图） =====
-figure('Name','变声效果对比','Position',[100 100 1400 900]);
+figure;
 
 Nm=length(male_voice);   Nf=length(female_voice);   Nc=length(child_voice);
 
@@ -276,11 +272,6 @@ fm=(0:floor(Nm/2))*(fs/Nm);  ff=(0:floor(Nf/2))*(fs/Nf);  fc=(0:floor(Nc/2))*(fs
 subplot(3,3,2); plot(fm(1:min(end,3000*Nm/fs)),Fm(1:min(end,3000*Nm/fs)),'b'); title('男声—频谱'); xlim([0 3000]); grid on;
 subplot(3,3,5); plot(ff(1:min(end,3000*Nf/fs)),Ff(1:min(end,3000*Nf/fs)),'r'); title('女声—频谱'); xlim([0 3000]); grid on;
 subplot(3,3,8); plot(fc(1:min(end,3000*Nc/fs)),Fc(1:min(end,3000*Nc/fs)),'g'); title('童声—频谱'); xlim([0 3000]); grid on;
-
-% 语谱图
-subplot(3,3,3); spectrogram(male_voice,512,256,512,fs,'yaxis'); title('男声—语谱图'); ylim([0 4000]);
-subplot(3,3,6); spectrogram(female_voice,512,256,512,fs,'yaxis'); title('女声—语谱图'); ylim([0 4000]);
-subplot(3,3,9); spectrogram(child_voice,512,256,512,fs,'yaxis');  title('童声—语谱图'); ylim([0 4000]);
 
 % ===== 播放菜单 =====
 fprintf('\n[1]男声 [2]女声 [3]童声 [4]全部 [0]退出\n');
