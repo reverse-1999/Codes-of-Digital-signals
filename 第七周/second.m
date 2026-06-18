@@ -166,25 +166,30 @@ for PRN=1:32   %%%不同卫星搜索
        
         %--- Generate local sine and cosine -------------------------------
       
-       %%%%题目4.1 产生本地正弦和余弦信号，完成对signal1信号的正交解调，并形成复信号，画出并观察信号频谱，是否存在2倍中频分量。
+       %%%%题目4.1 产生本地正弦和余弦信号，完成对signal1信号的正交解调，并形成复信号，是否存在2倍中频分量。
         t = (0:length(signal1)-1) * ts; % 时间向量
         localSine = sin(2*pi*frqBins(frqBinIndex)*t); % 本地正弦信号
         localCosine = cos(2*pi*frqBins(frqBinIndex)*t); % 本地余弦信号
         signalIQ = signal1 .* (localCosine + 1j*localSine); % 正交解调后的复信号
+       
+        if(frqBinIndex==1 && PRN==1) %%%只画出第一个频点，第一个卫星的结果
         figure;
         plot(abs(fftshift(fft(signalIQ))));
         xlabel('频率(MHz)');
         ylabel('幅度');
         axis tight;
         title(['正交解调后的信号频谱，频点索引：', num2str(frqBinIndex)]);
+        end
        %%%%题目4.2 利用之前设计的低通滤波其完成对signal1信号的滤波,观察频谱是否只剩下低频分量。
         signalIQ_filtered = filter(b, 1, signalIQ);
+        if(frqBinIndex==1 && PRN==1) %%%只画出第一个频点，第一个卫星的结果
         figure;
         plot(abs(fftshift(fft(signalIQ_filtered))));
         xlabel('频率(MHz)');
         ylabel('幅度');
         axis tight;
         title(['滤波后的信号频谱，频点索引：', num2str(frqBinIndex)]);
+        end
        %%%%题目4.3 利用频域共轭相乘方法完成相关运算。
         % acqRes1 = abs(ifft(convCodeIQ1)) .^ 2; %%%%相关结果
         % temp=acqRes1;
